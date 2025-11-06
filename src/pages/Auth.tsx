@@ -12,8 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isAdminSignup, setIsAdminSignup] = useState(false);
   const [isOtp, setIsOtp] = useState(false);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [otp, setOtp] = useState("");
   const [sentOtp, setSentOtp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -52,6 +55,63 @@ const Auth = () => {
       toast({
         title: "Error",
         description: error.message || "Failed to send OTP",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdminSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Sign up the admin user
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
+      });
+
+      if (signUpError) throw signUpError;
+      if (!signUpData.user) throw new Error("Failed to create user");
+
+      // Create profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: signUpData.user.id,
+          email,
+          full_name: fullName,
+        });
+
+      if (profileError) throw profileError;
+
+      // Create admin role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: signUpData.user.id,
+          role: 'admin',
+        });
+
+      if (roleError) throw roleError;
+
+      toast({
+        title: "Success",
+        description: "Admin account created successfully!",
+      });
+
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create admin account",
         variant: "destructive",
       });
     } finally {
@@ -119,11 +179,108 @@ const Auth = () => {
             <GraduationCap className="h-16 w-16 text-primary" />
           </motion.div>
           <h1 className="text-4xl font-bold text-gradient mb-2">Campus Connect</h1>
-          <p className="text-muted-foreground">Welcome back! Please sign in to continue.</p>
+          <p className="text-muted-foreground">
+            {isAdminSignup ? "Create your admin account" : "Welcome back! Please sign in to continue."}
+          </p>
         </div>
 
         <Card className="p-8 card-hover bg-card/80 backdrop-blur-sm">
-          {!isOtp ? (
+          {/* Toggle between Admin Signup and Login */}
+          {!isOtp && (
+            <div className="flex gap-2 mb-6">
+              <Button
+                type="button"
+                variant={!isAdminSignup ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => setIsAdminSignup(false)}
+              >
+                Login
+              </Button>
+              <Button
+                type="button"
+                variant={isAdminSignup ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => setIsAdminSignup(true)}
+              >
+                Admin Signup
+              </Button>
+            </div>
+          )}
+
+          {!isOtp && isAdminSignup ? (
+            <form onSubmit={handleAdminSignup} className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  className="mt-2"
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="mt-2"
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="mt-2"
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <Button type="submit" className="w-full hover-lift" size="lg" disabled={loading}>
+                  {loading ? "Creating Account..." : "Create Admin Account"}
+                </Button>
+              </motion.div>
+
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="text-center text-sm text-muted-foreground"
+              >
+                Only use this for initial admin setup
+              </motion.p>
+            </form>
+          ) : !isOtp ? (
             <form onSubmit={handleSendOtp} className="space-y-6">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
