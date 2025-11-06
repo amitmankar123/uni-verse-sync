@@ -1,29 +1,105 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isOtp, setIsOtp] = useState(false);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
+  const [sentOtp, setSentOtp] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Check if user is already logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate("/dashboard");
+      }
+    });
+  }, [navigate]);
+
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement OTP sending logic
-    setIsOtp(true);
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("send-otp", {
+        body: { email },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setSentOtp(data.otp); // In production, don't store this client-side
+      setIsOtp(true);
+      toast({
+        title: "OTP Sent",
+        description: "Check your email for the verification code.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send OTP",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement OTP verification logic
-    // For now, redirect to a placeholder dashboard
-    navigate("/dashboard");
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
+        body: { email, otp, sentOtp },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Sign in with the magic link
+      if (data.session) {
+        const { error: signInError } = await supabase.auth.setSession({
+          access_token: data.session.properties.access_token,
+          refresh_token: data.session.properties.refresh_token,
+        });
+
+        if (signInError) throw signInError;
+
+        toast({
+          title: "Success",
+          description: "Logged in successfully!",
+        });
+
+        // Navigate based on role
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to verify OTP",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -71,8 +147,8 @@ const Auth = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <Button type="submit" className="w-full hover-lift" size="lg">
-                  Send OTP
+                <Button type="submit" className="w-full hover-lift" size="lg" disabled={loading}>
+                  {loading ? "Sending..." : "Send OTP"}
                 </Button>
               </motion.div>
 
@@ -127,8 +203,8 @@ const Auth = () => {
                 transition={{ delay: 0.3 }}
                 className="space-y-3"
               >
-                <Button type="submit" className="w-full hover-lift" size="lg">
-                  Verify & Login
+                <Button type="submit" className="w-full hover-lift" size="lg" disabled={loading}>
+                  {loading ? "Verifying..." : "Verify & Login"}
                 </Button>
                 <Button
                   type="button"
