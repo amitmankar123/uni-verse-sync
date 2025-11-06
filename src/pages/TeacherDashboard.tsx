@@ -1,11 +1,14 @@
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, LogOut, QrCode, BookOpen, Calendar } from "lucide-react";
+import { GraduationCap, LogOut, QrCode, BookOpen, Calendar, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { QRCodeGenerator } from "@/components/QRCodeGenerator";
 
 const TeacherDashboard = () => {
   const { signOut } = useAuth();
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -31,40 +34,68 @@ const TeacherDashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
+          className="space-y-8"
         >
-          <h1 className="text-4xl font-bold text-gradient mb-8">Teacher Dashboard</h1>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="p-6 card-hover cursor-pointer">
-              <div className="flex items-center gap-4">
-                <QrCode className="h-12 w-12 text-primary" />
-                <div>
-                  <h3 className="text-xl font-semibold">Generate QR Code</h3>
-                  <p className="text-muted-foreground">For attendance</p>
+          <h1 className="text-4xl font-bold text-gradient">Teacher Dashboard</h1>
+
+          {!activeSection ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card
+                className="p-6 card-hover cursor-pointer"
+                onClick={() => setActiveSection("qr-code")}
+              >
+                <div className="flex items-center gap-4">
+                  <QrCode className="h-12 w-12 text-primary" />
+                  <div>
+                    <h3 className="text-xl font-semibold">QR Code</h3>
+                    <p className="text-muted-foreground">Generate for attendance</p>
+                  </div>
                 </div>
-              </div>
-            </Card>
-            
-            <Card className="p-6 card-hover cursor-pointer">
-              <div className="flex items-center gap-4">
-                <BookOpen className="h-12 w-12 text-primary" />
-                <div>
-                  <h3 className="text-xl font-semibold">Assignments</h3>
-                  <p className="text-muted-foreground">Add & manage</p>
+              </Card>
+
+              <Card className="p-6 card-hover cursor-pointer">
+                <div className="flex items-center gap-4">
+                  <Users className="h-12 w-12 text-primary" />
+                  <div>
+                    <h3 className="text-xl font-semibold">Attendance</h3>
+                    <p className="text-muted-foreground">View & manage</p>
+                  </div>
                 </div>
-              </div>
-            </Card>
-            
-            <Card className="p-6 card-hover cursor-pointer">
-              <div className="flex items-center gap-4">
-                <Calendar className="h-12 w-12 text-primary" />
-                <div>
-                  <h3 className="text-xl font-semibold">Schedule Classes</h3>
-                  <p className="text-muted-foreground">Manage timetable</p>
+              </Card>
+
+              <Card className="p-6 card-hover cursor-pointer">
+                <div className="flex items-center gap-4">
+                  <BookOpen className="h-12 w-12 text-primary" />
+                  <div>
+                    <h3 className="text-xl font-semibold">Assignments</h3>
+                    <p className="text-muted-foreground">Add & manage</p>
+                  </div>
                 </div>
-              </div>
-            </Card>
-          </div>
+              </Card>
+
+              <Card className="p-6 card-hover cursor-pointer">
+                <div className="flex items-center gap-4">
+                  <Calendar className="h-12 w-12 text-primary" />
+                  <div>
+                    <h3 className="text-xl font-semibold">Schedule</h3>
+                    <p className="text-muted-foreground">Manage classes</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Button
+                variant="outline"
+                onClick={() => setActiveSection(null)}
+                className="hover-lift"
+              >
+                ← Back to Dashboard
+              </Button>
+
+              {activeSection === "qr-code" && <QRCodeGenerator />}
+            </div>
+          )}
         </motion.div>
       </div>
     </div>
