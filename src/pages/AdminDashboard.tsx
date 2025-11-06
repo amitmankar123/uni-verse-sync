@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { UserManagement } from "@/components/UserManagement";
+import { z } from "zod";
 import {
   Select,
   SelectContent,
@@ -15,6 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+const createUserSchema = z.object({
+  email: z.string().email("Invalid email address").max(255),
+  fullName: z.string().trim().min(1, "Full name is required").max(100),
+  photoUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
+  role: z.enum(["admin", "teacher", "student"]),
+  uniqueId: z.string().optional(),
+  enrollmentNumber: z.string().optional(),
+});
 
 const AdminDashboard = () => {
   const { signOut } = useAuth();
@@ -32,6 +43,21 @@ const AdminDashboard = () => {
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate form data
+    try {
+      createUserSchema.parse(formData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Validation Error",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -66,6 +92,9 @@ const AdminDashboard = () => {
         enrollmentNumber: "",
       });
       setShowAddUser(false);
+      
+      // Trigger refresh of user list
+      window.location.reload();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -196,17 +225,16 @@ const AdminDashboard = () => {
             </motion.div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="p-6 card-hover">
-              <div className="flex items-center gap-4">
-                <Users className="h-12 w-12 text-primary" />
-                <div>
-                  <h3 className="text-xl font-semibold">Total Users</h3>
-                  <p className="text-muted-foreground">Manage all users</p>
-                </div>
+          <Card className="p-6">
+            <div className="flex items-center gap-4 mb-6">
+              <Users className="h-8 w-8 text-primary" />
+              <div>
+                <h2 className="text-2xl font-bold">User Management</h2>
+                <p className="text-muted-foreground">View and manage all users</p>
               </div>
-            </Card>
-          </div>
+            </div>
+            <UserManagement />
+          </Card>
         </motion.div>
       </div>
     </div>
