@@ -67,11 +67,12 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // Sign up the admin user
+      // Sign up the admin user - profile will be created automatically by trigger
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
           data: {
             full_name: fullName,
           },
@@ -80,17 +81,6 @@ const Auth = () => {
 
       if (signUpError) throw signUpError;
       if (!signUpData.user) throw new Error("Failed to create user");
-
-      // Create profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: signUpData.user.id,
-          email,
-          full_name: fullName,
-        });
-
-      if (profileError) throw profileError;
 
       // Create admin role
       const { error: roleError } = await supabase
